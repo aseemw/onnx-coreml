@@ -253,21 +253,32 @@ class ReshapeInitTensorFuser(object):
         for node in nodes:
             if node.op_type != 'Reshape':
                 continue
-            if len(node.input_tensors) != 2:
+            if not (len(node.input_tensors) == 2 or len(node.input_tensors) == 1):
                 continue
             tensor_name = node.inputs[0]
-            shape_name = node.inputs[1]
             if tensor_name not in node.input_tensors:
                 continue
-            if shape_name not in node.input_tensors:
+            if len(node.inputs) > 1:
+                shape_name = node.inputs[1]
+                if shape_name not in node.input_tensors:
+                    continue
+            is_non_constant_parent = False
+            if len(node.parents) > 0:
+                for parent in node.parents:
+                    if parent.op_type != 'Constant':
+                        is_non_constant_parent = True
+                        break
+            if is_non_constant_parent:
                 continue
-            assert len(node.parents) == 0
 
             removed.append(node)
             output_name = node.outputs[0]
 
             tensor = node.input_tensors[tensor_name]
-            shape = node.input_tensors[shape_name]
+            if 'shape' in node.attrs:
+                shape = tuple(node.attrs["shape"])
+            else:
+                shape = node.input_tensors[shape_name] # type: ignore
 
             # ONNX spec supports setting dimension to '0', in which case
             # it should be taken from old dimension.
@@ -276,7 +287,7 @@ class ReshapeInitTensorFuser(object):
             if any([s == 0 for s in shape]):
                 continue
 
-            reshaped_tensor = tensor.reshape(shape) #type: ignore
+            reshaped_tensor = tensor.reshape(shape)
 
             for child in node.children:
                 child.parents.remove(node)

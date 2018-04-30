@@ -282,6 +282,12 @@ def convert(model,  # type: Union[onnx.ModelProto, Text]
     predicted_feature_name:
         Name of the output feature for the class labels exposed in the Core ML
         model (applies to classifiers only). Defaults to 'classLabel'
+    add_custom_layers: bool
+        Flag to turn on addition of custom CoreML layers for unsupported ONNX ops or attributes within
+        a supported op.
+    custom_conversion_functions: dict()
+        A dictionary with keys corresponding to the names of onnx ops and values as functions taking 
+        an object of class 'Node' (see onnx-coreml/_graph.Node) and returning CoreML custom layer parameters.
     Returns
     -------
     model: A coreml model.
@@ -313,7 +319,7 @@ def convert(model,  # type: Union[onnx.ModelProto, Text]
     input_features = _make_coreml_input_features(graph)
     output_features = _make_coreml_output_features(graph)
 
-    builder = NeuralNetworkBuilder(input_features, output_features)
+    builder = NeuralNetworkBuilder(input_features, output_features, mode = mode)
     _transform_coreml_dtypes(builder, graph.inputs, graph.outputs)
 
     is_deprocess_bgr_only = (len(deprocessing_args) == 1) and \
