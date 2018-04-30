@@ -489,3 +489,32 @@ class ConstantsToInitializers(object):
 
         graph.nodes = remaining_nodes
         return graph
+
+
+class ImageScalerRemover(object):
+    '''
+    Removes ImageScaler layer if connected to a model input and single parent child nodes
+    '''
+
+    def __call__(self, graph):  # type: (Graph) -> Graph
+        input_names = [str(input_[0]) for input_ in graph.inputs]
+        nodes_to_be_removed = []
+        for node in graph.nodes:
+            if (node.op_type != 'ImageScaler') or (len(node.parents) != 0) or (node.inputs[0] not in input_names):
+                continue
+            is_eligible = True
+            for child in node.children:
+                if not (len(child.parents) == 1 and child.inputs[0] == node.outputs[0]):
+                    is_eligible = False
+                    break
+                child.inputs[0] = node.inputs[0]
+                child.parents = []
+            if not is_eligible:
+                continue
+            nodes_to_be_removed.append(node.name)
+
+        transformed_nodes = []
+        for node in graph.nodes:
+            if node.name not in nodes_to_be_removed:
+                transformed_nodes.append(node)
+        return Graph(transformed_nodes, graph.inputs, graph.outputs, graph.shape_dict)
