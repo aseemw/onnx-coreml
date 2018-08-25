@@ -15,7 +15,6 @@ from onnx_coreml._transformers import ConvAddFuser, DropoutRemover, ImageScalerR
 from tests._test_utils import _onnx_create_model, _test_onnx_model, \
     _conv_pool_output_size, _random_array
 
-
 class ConvAddFuserTest(unittest.TestCase):
     def test_fuse_conv_without_bias(self):  # type: () -> None
         kernel_shape = (3, 2)
@@ -157,37 +156,6 @@ class NodeRemoverTests(unittest.TestCase):
         self.assertEqual(new_graph.nodes[0].inputs[0], 'input')
         self.assertEqual(new_graph.nodes[1].inputs[0], new_graph.nodes[0].outputs[0])
         self.assertEqual(new_graph.nodes[1].outputs[0], 'out')
-
-    def test_image_scaler_remover(self): # type: () -> None
-        inputs = [('input', (1,3,50,50))]
-        outputs = [('out', (1,3,50,50), TensorProto.FLOAT)]
-
-        im_scaler = helper.make_node("ImageScaler",
-                                     inputs = ['input'],
-                                     outputs = ['scaler_out'],
-                                     bias = [10,-6,20], scale=3.0)
-
-        exp = helper.make_node("Exp",
-                               inputs=["scaler_out"],
-                               outputs=['out'])
-
-        onnx_model = _onnx_create_model([im_scaler, exp], inputs, outputs)
-
-        graph = Graph.from_onnx(onnx_model.graph)
-        new_graph = graph.transformed([ImageScalerRemover()])
-        self.assertEqual(len(graph.nodes), 2)
-        self.assertEqual(len(new_graph.nodes), 1)
-        self.assertEqual(new_graph.nodes[0].inputs[0], 'input')
-        self.assertEqual(new_graph.nodes[0].outputs[0], 'out')
-
-        coreml_model = convert(onnx_model)
-        spec = coreml_model.get_spec()
-
-        self.assertEqual(spec.neuralNetwork.preprocessing[0].scaler.channelScale, 3.0)
-        self.assertEqual(spec.neuralNetwork.preprocessing[0].scaler.blueBias, 20.0)
-        self.assertEqual(spec.neuralNetwork.preprocessing[0].scaler.greenBias, -6.0)
-        self.assertEqual(spec.neuralNetwork.preprocessing[0].scaler.redBias, 10.0)
-
 
 
 class PixelShuffleFuserTest(unittest.TestCase):
