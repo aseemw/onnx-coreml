@@ -26,7 +26,7 @@ torch.manual_seed(10)
 
 MIN_MACOS_VERSION_10_15 = (10, 15)
 
-DEBUG = True
+DEBUG = False
 
 def _test_torch_model_single_io(torch_model, torch_input_shape, coreml_input_shape, minimum_ios_deployment_target='12', decimal=4):
     # run torch model
